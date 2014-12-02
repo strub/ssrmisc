@@ -4,7 +4,7 @@
 
 (* -------------------------------------------------------------------- *)
 Require Import ssreflect ssrfun ssrbool eqtype ssrnat seq.
-Require Import choice fintype generic_quotient.
+Require Import choice fintype finset generic_quotient.
 
 Local Open Scope quotient_scope.
 
@@ -260,16 +260,13 @@ Notation "~: A"    := (fsetC A  ) : fset_scope.
 Local Open Scope fset_scope.
 
 (* -------------------------------------------------------------------- *)
-Local Notation inE := (in_fset, in_nil, mem_cat, mem_filter, inE).
-
-(* -------------------------------------------------------------------- *)
-Section FSetOpsTheory.
+Section FSetOpsE.
+Section Choice.
   Variable T : choiceType.
 
-  Implicit Types x y : T.
   Implicit Types A B : {fset T}.
+  Implicit Types x y : T.
 
-  (* ------------------------------------------------------------------ *)
   Lemma in_fset0 x: (x \in [fset]) = false.
   Proof. by rewrite in_fset in_nil. Qed.
 
@@ -284,6 +281,63 @@ Section FSetOpsTheory.
 
   Lemma in_fsetD x A B: (x \in A :\: B) = (x \in A) && (x \notin B).
   Proof. by rewrite in_fset mem_filter andbC. Qed.
+
+  Lemma mem_fset0: [fset] =i (pred0 : pred T).
+  Proof. by move=> x; rewrite in_fset0. Qed.
+End Choice.
+
+Section Fin.
+  Variable T : finType.
+
+  Implicit Types A B : {fset T}.
+  Implicit Types x y : T.
+
+  Lemma in_fsetT (x : T): x \in fsetT.
+  Proof. by rewrite in_fset mem_enum. Qed.
+
+  Lemma in_fsetC A x: (x \in ~: A) = (x \notin A).
+  Proof. by rewrite in_fset mem_filter mem_enum andbT. Qed.
+End Fin.
+End FSetOpsE.
+
+Hint Resolve mem_fset0.
+
+(* -------------------------------------------------------------------- *)
+Definition mem_fset :=
+  (in_fsetT, in_fsetC, in_fset0, in_fset1,
+   in_fsetU, in_fsetI, in_fsetD, in_fset ).
+
+Definition fset_class (T : choiceType) := {fset T}.
+Identity Coercion fset_of_finfset : fset_class >-> Quotient.type_of.
+
+(* -------------------------------------------------------------------- *)
+Section ToFinSet.
+  Variable T : finType.
+
+  Implicit Types A B : {fset T}.
+  Implicit Types x y : T.
+
+  Lemma mem_fset_set A : A =i [set x in A].
+  Proof. by move=> x; rewrite !inE. Qed.
+
+  Definition fset_of_set (A : {set  T}) := [fset of enum A].
+  Definition set_of_fset (A : {fset T}) := [set x in A].
+
+  Lemma set_of_fsetK: cancel set_of_fset fset_of_set.
+  Proof. by move=> A; apply/fsetP=> x; rewrite !mem_fset mem_enum !inE. Qed.
+
+  Lemma fset_of_setK: cancel fset_of_set set_of_fset.
+  Proof. by move=> A; apply/setP=> x; rewrite !(mem_fset, inE) mem_enum. Qed.
+End ToFinSet.
+
+(* -------------------------------------------------------------------- *)
+Section FSetOpsTheory.
+  Variable T : choiceType.
+
+  Implicit Types x y : T.
+  Implicit Types A B : {fset T}.
+
+  Local Notation inE := mem_fset.
 
   (* ------------------------------------------------------------------ *)
   Lemma fsetUP x A B : reflect (x \in A \/ x \in B) (x \in A :|: B).
@@ -331,7 +385,7 @@ Section FSetOpsTheory.
   Proof. by apply/fsetP => x; rewrite !inE andbC. Qed.
 
   Lemma fset0I A : [fset] :&: A = [fset].
-  Proof. by apply/fsetP => x; rewrite !inE andbF. Qed.
+  Proof. by apply/fsetP => x; rewrite !inE andFb. Qed.
 
   Lemma fsetI0 A : A :&: [fset] = [fset].
   Proof. by rewrite fsetIC fset0I. Qed.
@@ -359,10 +413,10 @@ Section FSetOpsTheory.
 
   (* ------------------------------------------------------------------ *)
   Lemma fsetIUr A B C : A :&: (B :|: C) = (A :&: B) :|: (A :&: C).
-  Proof. by apply/fsetP=> x; rewrite !inE andb_orl. Qed.
+  Proof. by apply/fsetP=> x; rewrite !inE andb_orr. Qed.
 
   Lemma fsetIUl A B C : (A :|: B) :&: C = (A :&: C) :|: (B :&: C).
-  Proof. by apply/fsetP=> x; rewrite !inE andb_orr. Qed.
+  Proof. by apply/fsetP=> x; rewrite !inE andb_orl. Qed.
 
   Lemma fsetUIr A B C : A :|: (B :&: C) = (A :|: B) :&: (A :|: C).
   Proof. by apply/fsetP=> x; rewrite !inE orb_andr. Qed.
@@ -371,35 +425,38 @@ Section FSetOpsTheory.
   Proof. by apply/fsetP=> x; rewrite !inE orb_andl. Qed.
 
   Lemma fsetUK A B : (A :|: B) :&: A = A.
-  Proof. by apply/fsetP=> x; rewrite !inE orbC orKb. Qed.
+  Proof. by apply/fsetP=> x; rewrite !inE orbK. Qed.
 
   Lemma fsetKU A B : A :&: (B :|: A) = A.
-  Proof. by apply/fsetP=> x; rewrite !inE orbC orbK. Qed.
+  Proof. by apply/fsetP=> x; rewrite !inE orKb. Qed.
 
   Lemma fsetIK A B : (A :&: B) :|: A = A.
-  Proof. by apply/fsetP=> x; rewrite !inE andbC andbK. Qed.
+  Proof. by apply/fsetP=> x; rewrite !inE andbK. Qed.
 
   Lemma fsetKI A B : A :|: (B :&: A) = A.
-  Proof. by apply/fsetP=> x; rewrite !inE andbC andKb. Qed.
+  Proof. by apply/fsetP=> x; rewrite !inE andKb. Qed.
 
   (* ------------------------------------------------------------------ *)
-  Lemma setD0 A : A :\: [fset] = A.
-  Proof. by apply/fsetP=> x; rewrite !inE. Qed.
+  Lemma fsetD0 A : A :\: [fset] = A.
+  Proof. by apply/fsetP=> x; rewrite !inE andbT. Qed.
   
   Lemma fset0D A : [fset] :\: A = [fset].
-  Proof. by apply/fsetP=> x; rewrite !inE andbF. Qed.
+  Proof. by apply/fsetP=> x; rewrite !inE. Qed.
   
   Lemma fsetDv A : A :\: A = [fset].
-  Proof. by apply/fsetP=> x; rewrite !inE andNb. Qed.
+  Proof. by apply/fsetP=> x; rewrite !inE andbN. Qed.
   
   Lemma fsetID A B : A :&: B :|: A :\: B = A.
-  Proof. by apply/fsetP=> x; rewrite !inE -andb_orl orbN. Qed.
+  Proof. by apply/fsetP=> x; rewrite !inE -andb_orr orbN andbT. Qed.
+
+  Lemma fsetII A B : (A :&: B) :&: (A :\: B) = [fset].
+  Proof. by apply/fsetP=> x; rewrite !mem_fset andbACA andbN andbF. Qed.
   
   Lemma fsetDUl A B C : (A :|: B) :\: C = (A :\: C) :|: (B :\: C).
-  Proof. by apply/fsetP=> x; rewrite !inE -andb_orr. Qed.
+  Proof. by apply/fsetP=> x; rewrite !inE -andb_orl. Qed.
   
   Lemma fsetDUr A B C : A :\: (B :|: C) = (A :\: B) :&: (A :\: C).
-  Proof. by apply/fsetP=> x; rewrite !inE andbACA andbb orbC negb_or. Qed.
+  Proof. by apply/fsetP=> x; rewrite !inE andbACA andbb negb_or. Qed.
   
   Lemma fsetDIl A B C : (A :&: B) :\: C = (A :\: C) :&: (B :\: C).
   Proof. by apply/fsetP=> x; rewrite !inE andbACA andbb. Qed.
@@ -408,16 +465,22 @@ Section FSetOpsTheory.
   Proof. by apply/fsetP=> x; rewrite !inE !andbA. Qed.
   
   Lemma fsetIDAC A B C : (A :\: B) :&: C = (A :&: C) :\: B.
-  Proof. by apply/fsetP=> x; rewrite !inE andbCA. Qed.
+  Proof. by apply/fsetP=> x; rewrite !inE andbAC. Qed.
   
   Lemma fsetDIr A B C : A :\: (B :&: C) = (A :\: B) :|: (A :\: C).
-  Proof. by apply/fsetP=> x; rewrite !inE -andb_orl orbC negb_and. Qed.
+  Proof. by apply/fsetP=> x; rewrite !inE -andb_orr negb_and. Qed.
  
   Lemma fsetDDl A B C : (A :\: B) :\: C = A :\: (B :|: C).
-  Proof. by apply/fsetP=> x; rewrite !inE orbC !negb_or !andbA. Qed.
+  Proof. by apply/fsetP=> x; rewrite !inE !negb_or !andbA. Qed.
   
   Lemma fsetDDr A B C : A :\: (B :\: C) = (A :\: B) :|: (A :&: C).
-  Proof. by apply/fsetP=> x; rewrite !inE -andb_orl orbC negb_and negbK. Qed.
+  Proof. by apply/fsetP=> x; rewrite !inE -andb_orr negb_and negbK. Qed.
+
+  Lemma fsetDK A B : (A :|: B) :\: B = A :\: B.
+  Proof. by rewrite fsetDUl fsetDv fsetU0. Qed.
+
+  Lemma fsetDKv A B : (A :&: B) :\: B = [fset].
+  Proof. by rewrite fsetDIl fsetDv fsetI0. Qed.
 End FSetOpsTheory.
 
 (* -------------------------------------------------------------------- *)
@@ -427,14 +490,7 @@ Section FSetFinOpsTheory.
   Implicit Types x y : T.
   Implicit Types A B : {fset T}.
 
-  (* ------------------------------------------------------------------ *)
-  Lemma in_fsetT (x : T): x \in fsetT.
-  Proof. by rewrite in_fset mem_enum. Qed.
-
-  Lemma in_fsetC A x: (x \in ~: A) = (x \notin A).
-  Proof. by rewrite inE mem_filter mem_enum andbT. Qed.
-
-  Local Notation inE := (in_fsetT, in_fsetC, inE).
+  Local Notation inE := mem_fset.
 
   (* ------------------------------------------------------------------ *)
   Lemma fsetTU A : fsetT :|: A = fsetT.
@@ -449,7 +505,7 @@ Section FSetFinOpsTheory.
 
   (* ------------------------------------------------------------------ *)
   Lemma fsetTI A : fsetT :&: A = A.
-  Proof. by apply/fsetP => x; rewrite !inE andbT. Qed.
+  Proof. by apply/fsetP => x; rewrite !inE andTb. Qed.
 
   Lemma fsetIT A : A :&: fsetT = A.
   Proof. by rewrite fsetIC fsetTI. Qed.
@@ -465,10 +521,10 @@ Section FSetFinOpsTheory.
   Proof. by apply/fsetP => x; rewrite !inE andbC. Qed.
 
   Lemma fsetDT A : A :\: fsetT = [fset].
-  Proof. by apply/fsetP=> x; rewrite !inE. Qed.
+  Proof. by apply/fsetP=> x; rewrite !inE andbF. Qed.
   
   Lemma fsetTD A : fsetT :\: A = ~: A.
-  Proof. by apply/fsetP=> x; rewrite !inE andbT. Qed.
+  Proof. by apply/fsetP=> x; rewrite !inE andTb. Qed.
 
   Lemma fsetCU A B : ~: (A :|: B) = ~: A :&: ~: B.
   Proof. by apply/fsetP=> x; rewrite !inE negb_or andbC. Qed.
@@ -480,7 +536,7 @@ Section FSetFinOpsTheory.
   Proof. by apply/fsetP=> x; rewrite !inE orbN. Qed.
 
   Lemma fsetICr A : A :&: ~: A = [fset].
-  Proof. by apply/fsetP=> x; rewrite !inE andNb. Qed.
+  Proof. by apply/fsetP=> x; rewrite !inE andbN. Qed.
 
   Lemma fsetC0 : ~: [fset] = [fset: T].
   Proof. by apply/fsetP=> x; rewrite !inE. Qed.
@@ -523,14 +579,37 @@ Section CardTheory.
   Proof. by rewrite !piE. Qed.
 
   (* ------------------------------------------------------------------ *)
-  Lemma fcardUI A B : #|<A :|: B>| + #|<A :&: B>| = #|<A>| + #|<B>|.
-  Proof. Admitted.
+  Lemma fcardUI_indep A B : A :&: B =i pred0 ->
+    #|<A :|: B>| = #|<A>| + #|<B>|.
+  Proof.
+    move=> h; rewrite piE /= undup_id ?size_cat //.
+    rewrite cat_uniq !uniq_useq andbT /=; apply/hasPn.
+    move=> x /= x_in_B; move: (h x); rewrite in_fsetI.
+    by rewrite x_in_B andbT => ->.
+  Qed.
 
+  Lemma fcardUI A B : #|<A :|: B>| + #|<A :&: B>| = #|<A>| + #|<B>|.
+  Proof.
+    rewrite -[A :|: B](fsetID _ A) fsetUK [A :|: B]fsetUC fsetDK.
+    rewrite fcardUI_indep; last first.
+      rewrite fsetIDA fsetDIl fsetDv fset0I; apply/mem_fset0.
+    rewrite addnAC fsetIC -addnA -fcardUI_indep ?fsetID //.
+    by rewrite fsetII; apply/mem_fset0.
+  Qed.
+
+  (* ------------------------------------------------------------------ *)
   Lemma fcardU A B : #|<A :|: B>| = (#|<A>| + #|<B>| - #|<A :&: B>|)%N.
   Proof. by rewrite -fcardUI addnK. Qed.
 
   Lemma fcardI A B : #|<A :&: B>| = (#|<A>| + #|<B>| - #|<A :|: B>|)%N.
   Proof. by rewrite -fcardUI addKn. Qed.
+
+  (* ------------------------------------------------------------------ *)
+  Lemma fcardID B A : #|<A :&: B>| + #|<A :\: B>| = #|<A>|.
+  Proof. by rewrite -fcardUI_indep ?fsetID // fsetII; apply/mem_fset0. Qed.
+
+  Lemma fcardD A B : #|<A :\: B>| = (#|<A>| - #|<A :&: B>|)%N.
+  Proof. by rewrite -(fcardID B A) addKn. Qed.
 End CardTheory.
 
 (* -------------------------------------------------------------------- *)
@@ -541,8 +620,50 @@ Section CardFinTheory.
   Implicit Types A B : {fset T}.
 
   (* ------------------------------------------------------------------ *)
-  Lemma fcardT: #|<[fset: T]>| = #|T|.
+  Lemma card_fset_set A : #|<A>| = #|A|.
+  Proof.
+    elim/fsetW: A=> A uqA; rewrite !piE useqK undup_id //.
+    move/card_uniqP: uqA=> <-; rewrite !cardE; congr (size _).
+    by apply/eq_enum=> x; rewrite !in_fset.
+  Qed.
+
+  (* ------------------------------------------------------------------ *)
+  Lemma fset0_set: set_of_fset [fset] = set0 :> {set T}.
+  Proof. by apply/setP=> x; rewrite !(mem_fset, inE). Qed.
+
+  (* ------------------------------------------------------------------ *)
+  Lemma fsetT_set: set_of_fset [fset: T] = setT :> {set T}.
+  Proof. by apply/setP=> x; rewrite !(mem_fset, inE). Qed.
+
+  (* ------------------------------------------------------------------ *)
+  Lemma fsetU_set: {morph (@set_of_fset T) : A B / A :|: B >-> (A :|: B)%SET}.
+  Proof. by move=> A B; apply/setP=> x; rewrite !(mem_fset, inE). Qed.
+
+  (* ------------------------------------------------------------------ *)
+  Lemma fsetI_set: {morph (@set_of_fset T) : A B / A :&: B >-> (A :&: B)%SET}.
+  Proof. by move=> A B; apply/setP=> x; rewrite !(mem_fset, inE). Qed.
+
+  (* ------------------------------------------------------------------ *)
+  Lemma fsetD_set: {morph (@set_of_fset T) : A B / A :\: B >-> (A :\: B)%SET}.
+  Proof. by move=> A B; apply/setP=> x; rewrite !(mem_fset, inE) andbC. Qed.
+
+  (* ------------------------------------------------------------------ *)
+  Lemma fsetC_set: {morph (@set_of_fset T) : A / ~: A >-> (~: A)%SET}.
+  Proof. by move=> A; apply/setP=> x; rewrite !(mem_fset, inE). Qed.
+
+  (* ------------------------------------------------------------------ *)
+  Lemma fcardT : #|<[fset: T]>| = #|T|.
   Proof. by rewrite !piE /= undup_id ?enum_uniq // -cardT. Qed.
+
+  (* ------------------------------------------------------------------ *)
+  Lemma fcardC A : #|<A>| + #|<~: A>| = #|T|.
+  Proof.
+    by rewrite -fcardUI_indep ?fsetUCr ?fcardT // fsetICr; apply/mem_fset0.
+  Qed.
+
+  (* ------------------------------------------------------------------ *)
+  Lemma fcardCs A : #|<A>| = #|T| - #|<~: A>|.
+  Proof. by rewrite -(fcardC A) addnK. Qed.
 End CardFinTheory.
 
 (*
