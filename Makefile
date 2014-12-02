@@ -12,7 +12,7 @@ INCFLAGS += -I ${SSR_TOP}/ssreflect/${COQBRANCH}/src -R ${SSR_TOP}/theories/ Ssr
 SUBDIRS  +=
 endif
 
-COQFILES =
+COQFILES = fset.v
 
 include Makefile.common
 
